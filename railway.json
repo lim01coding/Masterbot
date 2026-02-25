@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "services": [
+    {
+      "name": "master",
+      "source": "master",
+      "buildCommand": "npm install",
+      "startCommand": "node master.js",
+      "healthcheckPath": "/"
+    },
+    {
+      "name": "worker1",
+      "source": "worker1",
+      "buildCommand": "npm install",
+      "startCommand": "node worker.js",
+      "healthcheckPath": "/"
+    },
+    {
+      "name": "worker2",
+      "source": "worker2",
+      "buildCommand": "npm install",
+      "startCommand": "node worker.js",
+      "healthcheckPath": "/"
+    },
+    {
+      "name": "worker3",
+      "source": "worker3",
+      "buildCommand": "npm install",
+      "startCommand": "node worker.js",
+      "healthcheckPath": "/"
+    }
+  ]
+}
